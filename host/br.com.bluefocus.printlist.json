@@ -1,0 +1,10 @@
+
+{
+  "name": "br.com.bluefocus.printlist",
+  "description": "BlueFocus printer listing helper",
+  "path": "HOST_PATH",
+  "type": "stdio",
+  "allowed_origins": [
+    "chrome-extension://mnndbokmnjpaieoghbkcdohflohhnhkn/"
+  ]
+}

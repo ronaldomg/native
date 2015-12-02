@@ -1,0 +1,10 @@
+
+{
+  "name": "br.com.bluefocus.printhost",
+  "description": "BlueFocus print host for chrome",
+  "path": "HOST_PATH",
+  "type": "stdio",
+  "allowed_origins": [
+    "chrome-extension://mnndbokmnjpaieoghbkcdohflohhnhkn/"
+  ]
+}
