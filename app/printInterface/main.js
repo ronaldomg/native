@@ -1,7 +1,7 @@
 iframe = document.getElementById("popupFrame1");
 iframe.onload = function(){
   if(iframe.src.indexOf('himprimeviaapplet') > -1){
-    chrome.runtime.sendMessage({init: 'listPrinters'});
+    chrome.runtime.sendMessage({"list": "listPrinters"});
     var btn = iframe.contentWindow.document.getElementsByClassName("BtnImprimir");
     for(i=0;i<btn.length;i++){
       btn[i].addEventListener("click", function(event){
@@ -13,10 +13,12 @@ iframe.onload = function(){
 };
 chrome.runtime.onMessage.addListener(function(request, sender) {
     if( request.printer ){
-        //console.log(request.printer)
+        console.log(request.printer)
         addPrinter(request.printer);
     }else if (request.log){
         console.log(request.log);
+    }else if (request.error){
+
     }else if (request.install){
         uri = chrome.extension.getURL(request.install);
         document.body.innerHTML += '<iframe id="helperDowload" width="1" height="1" frameborder="0" src=""></iframe>';
@@ -42,13 +44,13 @@ function addPrinter(printer){
 function print(evt){
     cForm = evt.currentTarget.form;
     selectedPrinter = evt.currentTarget.form._PORTA.value;
-    if(verificaImpressora(cForm,selectedPrinter)){
+    if(verifyPrinter(cForm,selectedPrinter)){
         zippedFile = getBaseUrl(cForm._NOMEARQUIVO.value+'.zip');
-        chrome.runtime.sendMessage({file: zippedFile, printer:selectedPrinter});
+        chrome.runtime.sendMessage({"file": zippedFile, "printer": selectedPrinter});
     }
 }
 
-function verificaImpressora(form, printer){// f = form p = printer
+function verifyPrinter(form, printer){// f = form p = printer
     printers = form._IMPRESSORANOME.options;
     for(i=0;i<printers.length;i++){
         if(printers[i].value == printer){

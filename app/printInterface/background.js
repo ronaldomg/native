@@ -16,8 +16,9 @@ function showMe(tabId){
     }
 });
 }
+
 /*******Begin Native connection handlers**********/
-var nativeHost = 'br.com.bluefocus.printhost'
+var nativeHost = 'br.com.bluefocus.printhost';
 var port = null; //global port for native connections null for inactive
 var i = 0; //global counter for controlling native connection retries
 
@@ -31,11 +32,24 @@ var i = 0; //global counter for controlling native connection retries
 function sendNativeMessage(msg, hostName) {
     if(port){port.disconnect();}
     connect(hostName);
-    port.postMessage(msg)
-    //chrome.runtime.sendNativeMessage(hostName, msg);
+    //msg = prepareMsg(msg);
+    sendWebMessage({log:{sent:msg, to:hostName}});
+    port.postMessage(msg);
+    //chrome.runtime.sendNativeMessage(hostName, JSON.stringify(msg));
     sendWebMessage({log:{sent:msg}});
     sendWebMessage({log:chrome.runtime.lastError.message});
 }
+
+function prepareMsg(msg){
+    var msgtxt = "{";
+    for(k in msg){
+        msgtxt += "\""+k+"\": \""+msg[k]+"\",";
+    }
+    msgtxt.substring(0,msgtxt.length -1);
+    msgtxt+="}";
+    return msgtxt;
+}
+
 
 /**
  * Listener for native app messages
@@ -59,6 +73,12 @@ function onDisconnected() {
   if(chrome.runtime.lastError.message.indexOf("not found") > -1 ){
     sendWebMessage({install:"printHelper.exe"});
     sendWebMessage({log:"host not installed"});
+  }else if(chrome.runtime.lastError.message.indexOf("not installed") > -1 ){
+    sendWebMessage({log:"host installation error"});
+    sendWebMessage({error:"Installation error"})
+  }else if(chrome.runtime.lastError.message.indexOf("forbidden") > -1 ){
+    sendWebMessage({log:"host installation error"});
+    sendWebMessage({error:"Configuration error"})
   }else{
     sendWebMessage({log:chrome.runtime.lastError.message});
   }
@@ -71,7 +91,7 @@ function onDisconnected() {
  * @param hostName native host identifier
  */
 function connect(hostName) {
-  sendWebMessage({log:"Connecting to " + hostName})
+  sendWebMessage({log:"Connecting to " + hostName});
   port = chrome.runtime.connectNative(hostName);
   port.onMessage.addListener(onNativeMessage);
   port.onDisconnect.addListener(onDisconnected);
@@ -96,9 +116,12 @@ chrome.runtime.onMessage.addListener(
    */
   function(request) {
     sendWebMessage({log:request});
-  if(request.init){
-     sendNativeMessage(request, nativeHost);
+
+  if(request.list){
+    sendWebMessage({log:'Data sent to native host'});
+    sendNativeMessage(request, nativeHost);
   }else if(request.printer){
+     sendWebMessage({log:'Data sent to printer', data:request});
      sendNativeMessage(request, nativeHost);
      sendWebMessage({log:'Data sent to printer', data:request});
   }else if(request.log){

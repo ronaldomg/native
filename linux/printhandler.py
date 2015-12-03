@@ -1,6 +1,8 @@
+#!/usr/bin/env python
+
 import struct
 import sys
-
+import cups
 import json
 import urllib2
 import zipfile
@@ -16,7 +18,6 @@ class PrintHost:
     printer = ""
     # Thread that reads messages from the web.
 
-    @staticmethod
     def read_input(self):
 
         self.send_message("LOG", "Started reading input")
@@ -32,7 +33,7 @@ class PrintHost:
             if len(text_length_bytes) > 0:
                 self.send_message("LOG", "Reading input")
                 # Unpack message length as 4 byte integer.
-                self.text_length = struct.unpack("i", text_length_bytes)[0]
+                text_length = struct.unpack("i", text_length_bytes)[0]
 
                 # Read the text (JSON object) of the message.
                 text = sys.stdin.read(text_length)
@@ -44,7 +45,7 @@ class PrintHost:
             if interactions == 0:
                 sys.exit(0)
             else:
-                read_input()
+                self.read_input()
         sys.exit(0)
 
     # Message Processor
@@ -54,39 +55,37 @@ class PrintHost:
         if content["printer"]:  # user sent a print intent
             self.printer = content["printer"]
             self.file = content["file"]
-            self.send_message("LOG", "process_message -> Try Printing at " + printer)
+            self.send_message("LOG", "process_message -> Try Printing at " + self.printer)
             try:
                 is_zip = self.get_file()
                 if is_zip:
                     self.unzip()
                 self.send_to_printer()
-                # print_it(printer, to_print)
-                send_message("LOG", "process_message -> Printed at " + printer)
+                self.send_message("LOG", "process_message -> Printed at " + self.printer)
             except (IOError, RuntimeError, OSError):
-                send_message("ERROR", sys.exc_info())
+                self.send_message("ERROR", sys.exc_info())
                 sys.exit(1)
+        elif content["init"]:
+            self.enum_printers()
+        else:
+            self.send_message("LOG", "There is no method implemented to handle:" + message)
         sys.exit(0)
 
-    @staticmethod
     def enum_printers(self):
         try:
-            import cups
             con = cups.Connection()
             printer_list = con.getPrinters()
-            # print printer_list
             for printer in printer_list:
                 self.send_message("printer", json.dumps(printer))
-
         except (IOError, RuntimeError, OSError):
             self.send_message("ERROR", sys.exc_info())
             sys.exit(1)
         sys.exit(0)
 
-    @staticmethod
     def get_file(self):
         file_type = self.file.split(".")[-1]
         self.real_name = self.file.split(".")[-2].split("/")[-1]
-        self.send_message("LOG", "get_file -> Starting download of " + file_url)
+        self.send_message("LOG", "get_file -> Starting download of " + self.file)
 
         download_file = urllib2.urlopen(self.file)
         self.send_message("LOG", "get_file -> Download setup done")
@@ -110,20 +109,17 @@ class PrintHost:
                     sys.exit(1)
 
         self.send_message("LOG", "get_file -> Done downloading file")
-        is_zip = True if file_type == "zip" else False
+        return True if file_type == "zip" else False
 
-        return is_zip
-
-    @staticmethod
     def unzip(self):
-        print_file = c_path + "print.txt"
-        self.send_message("LOG", "unzip -> File set as: {0}".format(prn_file["file"]))
+        print_file = self.c_path + "print.txt"
+        self.send_message("LOG", "unzip -> File set as: {0}".format(self.file))
         self.raw = ""
         try:
-            if zipfile.is_zipfile(prn_file["file"]):
-                to_unzip = zipfile.ZipFile(prn_file["file"])
+            if zipfile.is_zipfile(self.file):
+                to_unzip = zipfile.ZipFile(self.file)
             else:
-                send_message("LOG", "unzip -> ERROR: Cannot Open zip file")
+                self.send_message("LOG", "unzip -> ERROR: Cannot Open zip file")
                 sys.exit(1)
             for name in to_unzip.namelist():
                 fo = open(print_file, "wb")
@@ -131,11 +127,10 @@ class PrintHost:
                 fo.write(print_file)
                 fo.close()
         except (IOError, RuntimeError, AssertionError, OSError):
-            send_message("ERROR", sys.exc_info())
+            self.send_message("ERROR", sys.exc_info())
             sys.exit(1)
         self.file = print_file
 
-    @staticmethod
     def send_to_printer(self):
         doc_name = "PyJob_" + self.real_name  # create a name for the job
         self.send_message("LOG", "send_to_printer -> Print job setup")
@@ -152,7 +147,6 @@ class PrintHost:
         else:
             message = "{\"Error\": \"An error has occurred\"}"
             fo = open("errorlog", "wb+")
-            fo.write()
             fo.write(msg)
             fo.close()
         sys.stdout.write(struct.pack("I", len(message)))
@@ -161,7 +155,7 @@ class PrintHost:
 
     def __init__(self):
         self.send_message("LOG", "Main -> Started native client")
-        self.read_input(self)
+        self.read_input()
         sys.exit(0)
 
 
