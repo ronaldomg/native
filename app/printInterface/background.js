@@ -17,7 +17,7 @@ function showMe(tabId){
 });
 }
 /*******Begin Native connection handlers**********/
-
+var nativeHost = 'br.com.bluefocus.printhost'
 var port = null; //global port for native connections null for inactive
 var i = 0; //global counter for controlling native connection retries
 
@@ -95,11 +95,11 @@ chrome.runtime.onMessage.addListener(
    *        file -> url of the zip file to print
    */
   function(request) {
-  sendWebMessage({log:request});
+    sendWebMessage({log:request});
   if(request.init){
-    connect('br.com.bluefocus.printlist');
+     sendNativeMessage(request, nativeHost);
   }else if(request.printer){
-     sendNativeMessage(request, 'br.com.bluefocus.printhost');
+     sendNativeMessage(request, nativeHost);
      sendWebMessage({log:'Data sent to printer', data:request});
   }else if(request.log){
     sendWebMessage({log:'Data sent to printer', data:request});
