@@ -1,7 +1,8 @@
 iframe = document.getElementById("popupFrame1");
 iframe.onload = function(){
   if(iframe.src.indexOf('himprimeviaapplet') > -1){
-    chrome.runtime.sendMessage({"list": "listPrinters"});
+    listPrinters = "printers"
+    chrome.runtime.sendMessage({list: listPrinters});
     var btn = iframe.contentWindow.document.getElementsByClassName("BtnImprimir");
     for(i=0;i<btn.length;i++){
       btn[i].addEventListener("click", function(event){
@@ -44,10 +45,8 @@ function addPrinter(printer){
 function print(evt){
     cForm = evt.currentTarget.form;
     selectedPrinter = evt.currentTarget.form._PORTA.value;
-    if(verifyPrinter(cForm,selectedPrinter)){
-        zippedFile = getBaseUrl(cForm._NOMEARQUIVO.value+'.zip');
-        chrome.runtime.sendMessage({"file": zippedFile, "printer": selectedPrinter});
-    }
+    zippedFile = getBaseUrl(cForm._NOMEARQUIVO.value+'.zip');
+    chrome.runtime.sendMessage({"file": zippedFile, "printer": selectedPrinter});
 }
 
 function verifyPrinter(form, printer){// f = form p = printer

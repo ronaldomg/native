@@ -7,16 +7,18 @@ import urllib2
 import zipfile
 import os
 import logging
+import Queue
 
 logging.basicConfig(level=logging.DEBUG,
                     format='%(asctime)s %(levelname)s %(message)s',
                     filename=os.path.realpath(__file__)+'.log',
-                    filemode='w')
+                    filemode='a+')
 
 # On Windows, the default I/O mode is O_TEXT. Set this to O_BINARY
 # to avoid unwanted modifications of the input/output streams.
 if sys.platform == "win32":
     import msvcrt
+    import win32print
     msvcrt.setmode(sys.stdin.fileno(), os.O_BINARY)
     msvcrt.setmode(sys.stdout.fileno(), os.O_BINARY)
     platform = "win32"
@@ -32,6 +34,7 @@ class PrintHost:
     raw = ""
     real_name = ""
     printer = ""
+    queue = Queue.Queue()
     # Thread that reads messages from the web.
 
     def read_input(self):
@@ -48,17 +51,18 @@ class PrintHost:
             if len(text_length_bytes) > 0:
                 # Unpack message length as 4 byte integer.
                 self.send_message("LOG", "Reading the input")
+                text_length = struct.unpack("i", text_length_bytes)[0]
+                self.send_message("LOG", "Reading the length")
+                text = sys.stdin.read(text_length)
                 try:
-                    text_length = struct.unpack("i", text_length_bytes)[0]
-                    self.send_message("LOG", "Reading the length="+text_length.decode('utf-8'))
-                    text = sys.stdin.read(text_length)
-                    self.send_message("LOG", text)
-                    self.process_message(text)
+                    logging.info(text + "\n\n\n")
+                    self.queue.put(text)
+                    self.process_message()
                 except:
-                    message = "erro"
-                    sys.stdout.write(struct.pack("I", len(message)))
-                    sys.stdout.write(message)
-                    sys.stdout.flush()
+                    import traceback
+                    logging.info(sys.exc_info())
+                    logging.info(traceback.format_exc())
+                break
             # Reduce remaining interactions
             interactions -= 1
             if interactions == 0:
@@ -68,38 +72,54 @@ class PrintHost:
         sys.exit(0)
 
     # Message Processor
-    def process_message(self, message):
-        self.send_message("LOG", "process_message -> Processing received message: " + message)
-        content = json.loads(message)
-        if content["printer"]:  # user sent a print intent
-            self.printer = content["printer"]
-            self.file = content["file"]
-            self.send_message("LOG", "process_message -> Try Printing at " + self.printer)
-            try:
-                is_zip = self.get_file()
-                if is_zip:
-                    self.unzip()
-                self.send_to_printer()
-                self.send_message("LOG", "process_message -> Printed at " + self.printer)
-            except (IOError, RuntimeError, OSError):
-                self.send_message("ERROR", sys.exc_info())
-                sys.exit(1)
-        elif content["list"]:
-            self.enum_printers()
-        else:
-            self.send_message("LOG", "There is no method implemented to handle:" + message)
-        sys.exit(0)
+    def process_message(self):
+        while not self.queue.empty():
+            message = self.queue.get_nowait()
+            self.send_message("LOG", "process_message -> Processing received message: " + message)
+            content = json.loads(message)
+            content_keys = content.keys()
+            if "printer" in content_keys:  # user sent a print intent
+                self.printer = content["printer"]
+                self.file = content["file"]
+                self.send_message("LOG", "process_message -> Try Printing at " + self.printer)
+                try:
+                    is_zip = self.get_file()
+                    if is_zip:
+                        self.unzip()
+                    self.send_to_printer()
+                    self.send_message("LOG", "process_message -> Printed at " + self.printer)
+                except (IOError, RuntimeError, OSError):
+                    self.send_message("ERROR", sys.exc_info())
+                    sys.exit(1)
+            elif "list" in content_keys:
+                logging.info('here')
+                try:
+                    self.enum_printers((4, 2))
+                except:
+                    import traceback
+                    logging.info(traceback.format_exc())
+                    logging.info(sys.exc_info()[0] + "\n" + sys.exc_info()[2].tb_frame.f_code.co_filename + "\n" + sys.exc_info()[2].tb_lineno)
+                    sys.exit(1)
+            else:
+                self.send_message("LOG", "There is no method implemented to handle:" + message)
+                sys.exit(0)
 
-    def enum_printers(self):
-        try:
-            con = cups.Connection()
-            printer_list = con.getPrinters()
-            for printer in printer_list:
-                self.send_message("printer", json.dumps(printer))
-        except (IOError, RuntimeError, OSError):
-            self.send_message("ERROR", sys.exc_info())
-            sys.exit(1)
-        sys.exit(0)
+    def enum_printers(self, tpl):
+        logging.info("enum")
+        for i in tpl:
+            logging.info(i)
+            try:
+                printer_list = win32print.EnumPrinters(i)
+                logging.info(printer_list)
+                for item in printer_list:
+                    logging.info(item)
+                    self.send_message("printer", item[2])
+            except (IOError, RuntimeError, OSError):
+                import traceback
+                logging.info(traceback.format_exc())
+                logging.info(sys.exc_info()[0] + "\n" + sys.exc_info()[2].tb_frame.f_code.co_filename + "\n" + sys.exc_info()[2].tb_lineno)
+                sys.exit(1)
+                sys.exit(1)
 
     def get_file(self):
         file_type = self.file.split(".")[-1]
@@ -126,7 +146,7 @@ class PrintHost:
                 except IOError:
                     self.send_message("ERROR", sys.exc_info())
                     sys.exit(1)
-
+        self.file = dl_file
         self.send_message("LOG", "get_file -> Done downloading file")
         return True if file_type == "zip" else False
 
@@ -134,42 +154,59 @@ class PrintHost:
         print_file = self.c_path + "print.txt"
         self.send_message("LOG", "unzip -> File set as: {0}".format(self.file))
         self.raw = ""
-        try:
-            if zipfile.is_zipfile(self.file):
-                to_unzip = zipfile.ZipFile(self.file)
-            else:
-                self.send_message("LOG", "unzip -> ERROR: Cannot Open zip file")
-                sys.exit(1)
+        if zipfile.is_zipfile(self.file):
+            to_unzip = zipfile.ZipFile(self.file)
             for name in to_unzip.namelist():
-                fo = open(print_file, "wb")
-                self.raw = to_unzip.read(name)
-                fo.write(print_file)
-                fo.close()
-        except (IOError, RuntimeError, AssertionError, OSError):
-            self.send_message("ERROR", sys.exc_info())
-            sys.exit(1)
+                try:
+                    fo = open(print_file, "wb")
+                    self.raw = to_unzip.read(name)
+                    fo.write(self.raw)
+                    fo.close()
+                except (IOError, RuntimeError, AssertionError, OSError):
+                    self.send_message("LOG", "unzip -> ERROR: Cannot Open zip file")
+                    logging.info(sys.exc_info())
+                    self.send_message("ERROR", sys.exc_info())
+                    sys.exit(1)
+        else:
+            logging.info(zipfile.ZipInfo(self.file))
+            sys.exit(5)
         self.file = print_file
 
     def send_to_printer(self):
         doc_name = "PyJob_" + self.real_name  # create a name for the job
         self.send_message("LOG", "send_to_printer -> Print job setup")
-        con = cups.Connection()
-        con.printFile(self.printer, self.file, doc_name, dict())
+        d_printer = win32print.OpenPrinter(self.printer)  # connect to the selected printer
+        self.send_message("LOG", "send_to_printer -> Create print job document: " + doc_name)
+        try:
+            win32print.StartDocPrinter(d_printer, 1, (doc_name, None, "RAW"))
+        except RuntimeError:
+            self.send_message("ERROR", sys.exc_info())
+        self.send_message("LOG", "send_to_printer -> Create print job page")
+        win32print.StartPagePrinter(d_printer)
+        self.send_message("LOG", "send_to_printer -> Put print file content to page" + self.file)
+        self.send_message("LOG", "send_to_printer -> Print File contents: \n" + self.raw)
+        win32print.WritePrinter(d_printer, self.raw)
+        self.send_message("LOG", "send_to_printer -> Close page")
+        win32print.EndPagePrinter(d_printer)
+        self.send_message("LOG", "send_to_printer -> Close Doc")
+        win32print.EndDocPrinter(d_printer)
+        win32print.ClosePrinter(d_printer)
         self.send_message("LOG", "send_to_printer -> print Job done")
+        self.send_message("EXIT", "EOF")
         sys.exit(0)
 
     @staticmethod
     def send_message(msg_type, msg):
 
-        if msg_type != "ERROR":
-            message = "{\"" + msg_type.lower() + "\": \"" + msg + "\"}"
+        if msg_type == "ERROR":
+            msg = "{\"Error\": \"An error has occurred:\n" + repr(msg) + "\"}"
+        elif msg_type == "EXIT":
+            sys.stdin.close()
         else:
-            message = "{\"Error\": \"An error has occurred\"}"
-            fo = open("errorlog", "wb+")
-            fo.write(msg)
-            fo.close()
-        sys.stdout.write(struct.pack("I", len(message)))
-        sys.stdout.write(message)
+            msg = json.dumps({msg_type.lower(): msg})
+            logging.info(msg)
+        sys.stdout.write(struct.pack("I", len(msg)))
+        sys.stdout.write(msg)
         sys.stdout.flush()
 
     def __init__(self):

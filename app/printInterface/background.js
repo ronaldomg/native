@@ -30,8 +30,9 @@ var i = 0; //global counter for controlling native connection retries
  */
 
 function sendNativeMessage(msg, hostName) {
-    if(port){port.disconnect();}
-    connect(hostName);
+    if(!port){
+        connect(hostName);
+    }
     //msg = prepareMsg(msg);
     sendWebMessage({log:{sent:msg, to:hostName}});
     port.postMessage(msg);
@@ -39,17 +40,6 @@ function sendNativeMessage(msg, hostName) {
     sendWebMessage({log:{sent:msg}});
     sendWebMessage({log:chrome.runtime.lastError.message});
 }
-
-function prepareMsg(msg){
-    var msgtxt = "{";
-    for(k in msg){
-        msgtxt += "\""+k+"\": \""+msg[k]+"\",";
-    }
-    msgtxt.substring(0,msgtxt.length -1);
-    msgtxt+="}";
-    return msgtxt;
-}
-
 
 /**
  * Listener for native app messages
@@ -61,6 +51,8 @@ function onNativeMessage(message) {
         sendWebMessage({log:'adding printer: '+message["printer"]});
     }else if(message["log"]){
         sendWebMessage(message);
+    }else{
+         sendWebMessage({log:'unexpected: '+message})
     }
 }
 
@@ -116,7 +108,6 @@ chrome.runtime.onMessage.addListener(
    */
   function(request) {
     sendWebMessage({log:request});
-
   if(request.list){
     sendWebMessage({log:'Data sent to native host'});
     sendNativeMessage(request, nativeHost);
