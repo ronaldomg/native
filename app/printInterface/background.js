@@ -9,11 +9,12 @@ chrome.tabs.onSelectionChanged.addListener(function(tabid){showMe(tabid);});
 chrome.tabs.onUpdated.addListener(function(tabid){showMe(tabid);});
 function showMe(tabId){
   chrome.tabs.get(tabId, function(cTab){
-    if (cTab.url.indexOf('emiteetiqueta') > -1){
+    if (cTab.url.indexOf('hemi') > -1){
       chrome.pageAction.show(tabId);
      }else{
       chrome.pageAction.hide(tabId);
     }
+
 });
 }
 
@@ -38,7 +39,6 @@ function sendNativeMessage(msg, hostName) {
     port.postMessage(msg);
     //chrome.runtime.sendNativeMessage(hostName, JSON.stringify(msg));
     sendWebMessage({log:{sent:msg}});
-    sendWebMessage({log:chrome.runtime.lastError.message});
 }
 
 /**
@@ -51,8 +51,11 @@ function onNativeMessage(message) {
         sendWebMessage({log:'adding printer: '+message["printer"]});
     }else if(message["log"]){
         sendWebMessage(message);
+        if(message["log"].indexOf('print Job done') != -1){
+            sendWebMessage({done:'reload'});
+        }
     }else{
-         sendWebMessage({log:'unexpected: '+message})
+         sendWebMessage({log:'unexpected: '+message});
     }
 }
 
@@ -63,20 +66,31 @@ function onNativeMessage(message) {
  */
 function onDisconnected() {
   if(chrome.runtime.lastError.message.indexOf("not found") > -1 ){
-    sendWebMessage({install:"printHelper.exe"});
+    sendWebMessage({install:installationFile()});
     sendWebMessage({log:"host not installed"});
   }else if(chrome.runtime.lastError.message.indexOf("not installed") > -1 ){
     sendWebMessage({log:"host installation error"});
-    sendWebMessage({error:"Installation error"})
+    sendWebMessage({error:"Installation error"});
   }else if(chrome.runtime.lastError.message.indexOf("forbidden") > -1 ){
     sendWebMessage({log:"host installation error"});
-    sendWebMessage({error:"Configuration error"})
-  }else{
+    sendWebMessage({error:"Configuration error"});
+  }else if(chrome.runtime.lastError.message != ""){
     sendWebMessage({log:chrome.runtime.lastError.message});
   }
   port = null;
 }
 
+function installationFile(){
+    if (navigator.appVersion.indexOf("Win")!=-1) {
+        return "assets/BlueFocus_Printer.exe";
+    }
+    if ((navigator.appVersion.indexOf("Mac")!=-1) || (navigator.appVersion.indexOf("X11")!=-1) || (navigator.appVersion.indexOf("Linux")!=-1)){
+        return "assets/BlueFocus_Printer.sh";
+    }
+    if (navigator.appVersion.indexOf("Unknown OS") != -1) {
+            return 'choose:["linux":"assets/BlueFocus_Printer.sh","windows":"assets/BlueFocus_Printer.exe"]';
+    }
+}
 /**
  * Create a native host connection using the host identifier
  * set listeners for messages and disconnection
@@ -102,9 +116,11 @@ chrome.runtime.onMessage.addListener(
    * Runtime message receiver
    * @param request message data in JSON format
    *    Keys:
-   *        init -> request for print list
+   *        list -> request for print list
    *        printer -> name of selected printer
    *        file -> url of the zip file to print
+   *        log -> request a console.log on main window
+   *        close -> request the disconnection from the host
    */
   function(request) {
     sendWebMessage({log:request});
@@ -116,11 +132,11 @@ chrome.runtime.onMessage.addListener(
      sendNativeMessage(request, nativeHost);
      sendWebMessage({log:'Data sent to printer', data:request});
   }else if(request.log){
-    sendWebMessage({log:'Data sent to printer', data:request});
+     sendWebMessage({log:'Data sent to printer', data:request});
+  }else if(request.close){
+     port.disconnect();
+     port = null;
+     sendWebMessage({log:'Host connection closed'});
   }
 });
 /*******End Web connection handlers**********/
-
-
-
-

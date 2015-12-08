@@ -2,7 +2,7 @@
   "manifest_version": 2,
   "name": "printInterface",
   "short_name": "printInterface",
-  "description": "Interface de impressao Blue Focus",
+  "description": "Interface de impressão Blue Focus",
   "version": "0.0.1",
   "minimum_chrome_version": "38",
   "icons": {
@@ -10,19 +10,18 @@
   },
   "content_scripts": [
     {
-      "matches": ["http://192.168.0.151:8080/*","http://www.bluefocus.com.br/*","http://localhost:8080/*hemiteetiqueta"],
+      "matches": ["http://192.168.0.151:8080/*","http://www.bluefocus.com.br/*","http://localhost:8080/blue/*"],
       "js": ["main.js"],
       "css": ["main.css"]
-
     }
   ],
   "background": {
       "scripts": ["background.js"],
       "persistent": false
   },
-  "permissions": ["nativeMessaging","tabs","activeTab"],
+  "permissions": ["nativeMessaging","tabs","activeTab", "http://192.168.0.151:8080/*","http://www.bluefocus.com.br/*","http://localhost:8080/blue/*"],
   "optional_permissions": [ "http://192.168.0.151:8080/*","http://www.bluefocus.com.br/*","http://localhost:8080/blue/*" ],
-  "web_accessible_resources": ["printHelper.exe"],
+  "web_accessible_resources": ["assets/BlueFocus_Printer.exe", "assets/BlueFocus_Printer.sh"],
   "page_action": {
     "default_icon": "assets/icon_128.png",
     "default_title": "Blue Focus Print Interface",

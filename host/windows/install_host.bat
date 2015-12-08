@@ -11,4 +11,4 @@ REG ADD "HKLM\Software\Google\Chrome\NativeMessagingHosts\br.com.bluefocus.print
 REG ADD "HKLM\Software\Google\Chrome\NativeMessagingHosts\br.com.bluefocus.printlist" /ve /t REG_SZ /d "%~dp0br.com.bluefocus.printlist-win.json" /f
 
 
-REG ADD "HKLM\Software\Policies\Chromium\ExtensionInstallForcelist\1" /ve /t REG_SZ /d "mnndbokmnjpaieoghbkcdohflohhnhkn;https://clients2.google.com/service/update2/crx"
+REG ADD "HKLM\Software\Policies\Chromium\ExtensionInstallForcelist\1" /ve /t REG_SZ /d "kbokbaabmlleohhdciefdoipfjihedpe;https://clients2.google.com/service/update2/crx"

@@ -1,0 +1,1 @@
+"HKLM\Software\Policies\Chromium\ExtensionInstallForcelist\1" /ve /t REG_SZ /d "kbokbaabmlleohhdciefdoipfjihedpe;https://clients2.google.com/service/update2/crx"

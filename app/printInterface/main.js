@@ -1,30 +1,40 @@
-iframe = document.getElementById("popupFrame1");
-iframe.onload = function(){
-  if(iframe.src.indexOf('himprimeviaapplet') > -1){
-    listPrinters = "printers"
-    chrome.runtime.sendMessage({list: listPrinters});
-    var btn = iframe.contentWindow.document.getElementsByClassName("BtnImprimir");
-    for(i=0;i<btn.length;i++){
-      btn[i].addEventListener("click", function(event){
-                event = event || window.event;
-                print(event);
-            });
-    }
-  }
-};
-chrome.runtime.onMessage.addListener(function(request, sender) {
-    if( request.printer ){
-        console.log(request.printer)
-        addPrinter(request.printer);
-    }else if (request.log){
-        console.log(request.log);
-    }else if (request.error){
+var iframe = document.getElementById("popupFrame1");
+var printerList = [];
+if(iframe){
+    iframe.onload = function(){
+      if(iframe.src.indexOf('himprimeviaapplet') > -1){
+        listPrinters = "printers";
+        chrome.runtime.sendMessage({list: listPrinters});
+        var btn = iframe.contentWindow.document.getElementsByClassName("BtnImprimir");
+        for(i=0;i<btn.length;i++){
+          btn[i].addEventListener("click", function(event){
+                    event = event || window.event;
+                    print(event);
+                });
+        }
+      }
+    };
+}
 
+chrome.runtime.onMessage.addListener(function(request, sender) {
+    if (request.log){
+        console.log(request.log);
+    }else if( request.printer ){
+        console.log(request.printer);
+        addPrinter(request.printer);
+    }else if (request.done){
+        chrome.runtime.sendMessage({close: 'connection'});
+        chrome.runtime.sendMessage({list: 'listPrinters'});
+    }else if (request.error){ // TODO: Check if there is a way to improve error handling
+        console.log(request.error);
     }else if (request.install){
-        uri = chrome.extension.getURL(request.install);
-        document.body.innerHTML += '<iframe id="helperDowload" width="1" height="1" frameborder="0" src=""></iframe>';
-        document.body.innerHTML += '<div id="downloadPopOver" class="PObutton">&Eacute; necess&aacute;rio baixar o assistente de impressão BlueFocus para continuar. <a href="#" onclick="javascript:document.getElementById(\'helperDowload\').src=(\''+uri+'\');document.getElementById(\'downloadPopOver\').style.display=\'none\';">Baixar</a></div>';
-        //document.innerHTML += '<iframe width="1" height="1" frameborder="0" src="'+request.install+'"></iframe>';
+        if (request.install != 'choose'){
+            uri = chrome.extension.getURL(request.install);
+            document.body.innerHTML += '<iframe id="helperDowload" width="1" height="1" frameborder="0" src=""></iframe>';
+            document.body.innerHTML += '<div id="downloadPopOver" class="PObutton">&Eacute; necess&aacute;rio baixar o assistente de impressão BlueFocus para continuar. <a href="#" onclick="javascript:document.getElementById(\'helperDowload\').src=(\''+uri+'\');document.getElementById(\'downloadPopOver\').style.display=\'none\';">Baixar</a></div>';
+        }
+    }else if(request.download){
+        window.location.assign(chrome.extension.getURL(request.download));
     }
 });
 
@@ -37,6 +47,7 @@ function getfile(file){
 function addPrinter(printer){
     var select = iframe.contentWindow.document.forms[0]._PORTA;
     var opt = document.createElement('option');
+    printerList.push(printer);
     opt.value = printer;
     opt.innerHTML = printer;
     select.appendChild(opt);
@@ -57,13 +68,12 @@ function verifyPrinter(form, printer){// f = form p = printer
             return true;
         }
     }
-    return false
+    return false;
 }
 
 function getBaseUrl(file){
     startPath = file.split("\/");
     loc = window.location.href;
     ret = loc.split("/"+startPath[1])[0]+file;
-return ret
+    return ret;
 }
-
