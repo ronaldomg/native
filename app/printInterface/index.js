@@ -27,3 +27,11 @@ document.getElementById("nix").addEventListener
         );
     }
 );
+document.body.addEventListener
+("click", function()
+    {
+		var txt = chrome.runtime.id;
+		document.addEventListener('copy', function(e){e.clipboardData.setData('text/plain', txt);e.preventDefault();});
+		document.execCommand('copy');
+	}
+);

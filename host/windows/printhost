@@ -92,6 +92,7 @@ class PrintHost:
         dl_file = self.c_path + "print."+file_type  # Set local file name, will be downloaded to the installation folder
         fo = open(dl_file, "wb+")  # Open the destination file for writing in binary mode (clears the previous content)
         self.raw = ""
+
         while True:  # waiting to finish the download
             data = download_file.read(8192)
             if not data:

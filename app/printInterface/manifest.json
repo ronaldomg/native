@@ -10,7 +10,7 @@
   },
   "content_scripts": [
     {
-      "matches": ["http://192.168.0.151:8080/*","http://www.bluefocus.com.br/*","http://localhost:8080/blue/*"],
+      "matches": ["http://192.168.0.151/*","http://www.bluefocus.com.br/*","http://localhost/*","http://192.168.0.231/*"],
       "js": ["main.js"],
       "css": ["main.css"]
     }
@@ -19,9 +19,9 @@
       "scripts": ["background.js"],
       "persistent": false
   },
-  "permissions": ["nativeMessaging","tabs","activeTab", "http://192.168.0.151:8080/*","http://www.bluefocus.com.br/*","http://localhost:8080/blue/*"],
-  "optional_permissions": [ "http://192.168.0.151:8080/*","http://www.bluefocus.com.br/*","http://localhost:8080/blue/*" ],
-  "web_accessible_resources": ["assets/BlueFocus_Printer.exe", "assets/BlueFocus_Printer.sh"],
+  "permissions": ["nativeMessaging","tabs","activeTab", "http://192.168.0.151/*","http://www.bluefocus.com.br/*","http://localhost/*","http://192.168.0.231/*"],
+  "optional_permissions": [ "http://192.168.0.151/*","http://www.bluefocus.com.br/*","http://localhost/*","http://192.168.0.231/*" ],
+  "web_accessible_resources": ["assets/BlueFocus_Printer.exe", "assets/BlueFocus_Printer.sh", "default.gif"],
   "page_action": {
     "default_icon": "assets/icon_128.png",
     "default_title": "Blue Focus Print Interface",
