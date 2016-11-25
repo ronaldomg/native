@@ -14,10 +14,10 @@ document.addEventListener("DOMNodeInserted", function (ev) {
 				iframe.contentWindow.document.getElementById("PRINTAPPLETContainer").style.display = 'none';
 				chrome.runtime.sendMessage({list: listPrinters});
 				var baseURL = window.location.href.split('/servlet/')[0];
-				if (!loaded){
-				    iframe.contentWindow.document.forms[0].vPORTA.innerHTML = "";
-				    iframe.contentWindow.document.forms[0].vPORTA.parentNode.innerHTML += '<img id="bfpldrimg" src="'+baseURL+'/static/Resources/indicator.gif"/>';
-                }
+			    iframe.contentWindow.document.forms[0].vPORTA.innerHTML = "";
+			    console.log(ev);
+			    iframe.contentWindow.document.forms[0].vPORTA.parentNode.innerHTML += '<img id="bfpldrimg" src="'+baseURL+'/static/Resources/indicator.gif"/>';
+
 				for(i=0;i<btn.length;i++){
 					if (btn[i].name == 'BTNIMPRIMIR'){
 						btn[i].addEventListener("click", function(event){
@@ -31,7 +31,13 @@ document.addEventListener("DOMNodeInserted", function (ev) {
 		};
 	}
 }, false);
+
 chrome.runtime.onMessage.addListener(function(request, sender) {
+
+    if(iframe.contentWindow.document.forms[0].vPORTA.parentNode.children.bfpldrimg){
+        iframe.contentWindow.document.forms[0].vPORTA.parentNode.children.bfpldrimg.remove();
+    }
+
     if (request.log){
 		console.log(request.log);
     }else if(request.printer){
@@ -64,10 +70,6 @@ function getfile(file){
 }
 
 function addPrinter(printer){
-	if(loaded){
-	    iframe.contentWindow.document.getElementById("bfpldrimg").style.display = 'none';
-	}
-	loaded = true;
     var select = iframe.contentWindow.document.forms[0].vPORTA;
     var opt = document.createElement('option');
     printerList.push(printer);
@@ -108,5 +110,7 @@ function getBaseUrl(file){//TODO verify if is possible to change the file at gen
 
 function delAlert(){
 	el = document.getElementById("helperDowload");
-	el.parentNode.removeChild(el);
+	if (el){
+	    el.parentNode.removeChild(el);
+	}
 }
